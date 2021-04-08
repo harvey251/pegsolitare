@@ -8,6 +8,7 @@
 #  Add path cost, could be inverse distance from the center?
 #  add rollback
 #  implement basic caching
+import random
 from copy import deepcopy
 from pprint import pprint
 
@@ -27,6 +28,15 @@ START_BOARD = [
     [None, None, 1, 1, 1, None, None]
 ]
 
+REWARD_BOARD = [
+    [None, None, 50, 25, 50, None, None],
+    [None, None, 25, 15, 25, None, None],
+    [50, 25, 15, 5, 15, 25, 50],
+    [25, 15, 5, 0, 5, 15, 25],
+    [50, 25, 15, 5, 15, 25, 50],
+    [None, None, 25, 15, 25, None, None],
+    [None, None, 50, 25, 50, None, None],
+]
 
 def goal_test(board):
     if board[3][3] == 0:
@@ -38,15 +48,64 @@ def goal_test(board):
             return False
     return True
 
+def get_value(x,y):
+    return REWARD_BOARD[y][x]
+
+
+def calculate_loneliness_penalty(board):
+    # idea is we calculate the board and then if the pieces on the board
+    #  and any lonely pieces carry a penalty. Then we can decide to continue down
+    #  that route or pursue a different one
+    # return 1
+    raise
+
+def calculate_reword(move):
+    x, y, z = (get_value(*m) for m in move)
+    return x + y - z
 
 def get_applicable_states(board):
-    applicable_moves = []
+    empty_slots = get_empty_slots(board)
+    applicable_moves = get_applicable_moves(board, empty_slots)
+
+    sorted(applicable_moves, key=calculate_reword, reverse=True)
+    # calculate_loneliness_penalty()
+
+    # random.shuffle(applicable_moves)
+    for move in applicable_moves:
+        global moves
+        moves.append([move, applicable_moves, board])
+        t_board = apply_move(move, board)
+        if goal_test(t_board):
+            print("winner")
+            display_board(t_board)
+            pprint(moves)
+            exit()
+            # return t_board, True
+        # display_board(t_board)
+        result = get_applicable_states(t_board)
+        if result:
+            return result
+    else:
+        global rounds
+        rounds -= 1
+        # display_board(board)
+        # pprint(moves[-1])
+        # print("time to backtrack")
+        # if not rounds:
+        #     exit()
+
+
+def get_empty_slots(board):
     empty_slots = []
     for y, row in enumerate(board):
         for x, value in enumerate(row):
             if value == 0 and is_valid(board, to=(x, y)):
                 empty_slots.append((x, y))
+    return empty_slots
 
+
+def get_applicable_moves(board, empty_slots):
+    applicable_moves = []
     for x, y in empty_slots:
         to = x, y
         if y > 1:
@@ -72,17 +131,11 @@ def get_applicable_states(board):
             remove = x + 1, y
             if remove not in empty_slots and is_valid(board, from_, remove, to):
                 applicable_moves.append((from_, remove, to))
+    return applicable_moves
 
-    for move in applicable_moves:
-        t_board = apply_move(move, board)
-        if goal_test(t_board):
-            print("winner")
-            return t_board
-        display_board(t_board)
-        return get_applicable_states(t_board)
-    else:
 
-        print("time to backtrack")
+moves =[]
+rounds = 10
 
 def is_valid(board, from_=None, remove=None, to=None):
     try:
@@ -99,7 +152,7 @@ def is_valid(board, from_=None, remove=None, to=None):
             return board[y][x] == 0
         return True
     except Exception as e:
-        print(board)
+        # print(board)
         raise
 
 
@@ -132,7 +185,7 @@ def apply_move(move, board):
 
 
 if __name__ == '__main__':
-    display_board(START_BOARD)
+    # display_board(START_BOARD)
     print(get_applicable_states(START_BOARD))
 
 
